@@ -64,7 +64,6 @@ struct tga_info {
 
 class Image {
    public:
-    Image() = default;
     Image(int width, int height, tga_pixel_format format);
     Image(std::string_view filepath);
     bool load(std::string_view filepath);
@@ -73,12 +72,17 @@ class Image {
     void flip_h();
     void flip_v();
 
+    uint8_t *get_pixel(int x, int y);
+    uint8_t *get_raw_data();
+    std::vector<uint8_t> &get_data();
+
     tga_error last_error() const;
-    uint8_t* get_pixel(int x, int y);
     uint16_t get_width() const;
     uint16_t get_height() const;
     tga_pixel_format get_pixel_format() const;
     uint8_t get_pixel_size() const;
+    const uint8_t *get_raw_data() const;
+    const std::vector<uint8_t> &get_data() const;
 
    private:
     std::vector<uint8_t> data;

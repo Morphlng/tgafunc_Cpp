@@ -5,8 +5,6 @@
 
 // ----------------------Utilities----------------------
 
-#define TGA_MAX_IMAGE_DIMENSIONS 65535
-
 enum tga_image_type {
     TGA_TYPE_NO_DATA = 0,
     TGA_TYPE_COLOR_MAPPED = 1,
@@ -98,7 +96,7 @@ int pixel_format_to_pixel_size(tga::tga_pixel_format format) {
 
 // Gets the pixel format according to the header.
 // Returns true means the header is not illegal, otherwise returns false.
-bool set_pixel_format(tga::tga_pixel_format& format, const tga_header& header) {
+bool set_pixel_format(tga::tga_pixel_format &format, const tga_header &header) {
     if (IS_COLOR_MAPPED(header)) {
         // If the supported pixel_depth is changed, remember to also change
         // the pixel_to_map_index() function.
@@ -142,15 +140,15 @@ bool set_pixel_format(tga::tga_pixel_format& format, const tga_header& header) {
 }
 
 // Used for color mapped image decode.
-uint16_t pixel_to_map_index(uint8_t* pixel_ptr) {
+uint16_t pixel_to_map_index(uint8_t *pixel_ptr) {
     // Because only 8-bit index is supported now, so implemented in this way.
     return pixel_ptr[0];
 }
 
 // Gets the color of the specified index from the map.
 // Returns false means no error, otherwise returns true.
-bool try_get_color_from_map(uint8_t* dest, uint16_t index,
-                            const color_map* map) {
+bool try_get_color_from_map(uint8_t *dest, uint16_t index,
+                            const color_map *map) {
     index -= map->first_index;
     if (index < 0 && index >= map->entry_count) {
         return true;
@@ -162,15 +160,15 @@ bool try_get_color_from_map(uint8_t* dest, uint16_t index,
 
 // Decode image data from file stream.
 // Still a C style function
-tga::tga_error decode_data(uint8_t* data, const tga::tga_info* info,
+tga::tga_error decode_data(uint8_t *data, const tga::tga_info *info,
                            uint8_t pixel_size, bool is_color_mapped,
-                           const color_map* map, std::ifstream& stream) {
+                           const color_map *map, std::ifstream &stream) {
     tga::tga_error error_code = tga::tga_error::TGA_NO_ERROR;
     size_t pixel_count = (size_t)info->width * info->height;
 
     if (is_color_mapped) {
         for (; pixel_count > 0; --pixel_count) {
-            if (stream.read((char*)data, pixel_size).gcount() != pixel_size) {
+            if (stream.read((char *)data, pixel_size).gcount() != pixel_size) {
                 error_code = tga::tga_error::TGA_ERROR_FILE_CANNOT_READ;
                 break;
             }
@@ -185,7 +183,7 @@ tga::tga_error decode_data(uint8_t* data, const tga::tga_info* info,
         }
     } else {
         size_t data_size = pixel_count * pixel_size;
-        if (stream.read((char*)data, data_size).gcount() != data_size) {
+        if (stream.read((char *)data, data_size).gcount() != data_size) {
             error_code = tga::tga_error::TGA_ERROR_FILE_CANNOT_READ;
         }
     }
@@ -194,9 +192,9 @@ tga::tga_error decode_data(uint8_t* data, const tga::tga_info* info,
 
 // Decode image data with run-length encoding from file stream.
 // Still a C style function
-tga::tga_error decode_data_rle(uint8_t* data, const tga::tga_info* info,
+tga::tga_error decode_data_rle(uint8_t *data, const tga::tga_info *info,
                                uint8_t pixel_size, bool is_color_mapped,
-                               const color_map* map, std::ifstream& stream) {
+                               const color_map *map, std::ifstream &stream) {
     tga::tga_error error_code = tga::tga_error::TGA_NO_ERROR;
     size_t pixel_count = (size_t)info->width * info->height;
     bool is_run_length_packet = false;
@@ -211,14 +209,14 @@ tga::tga_error decode_data_rle(uint8_t* data, const tga::tga_info* info,
     for (; pixel_count > 0; --pixel_count) {
         if (packet_count == 0) {
             uint8_t repetition_count_field;
-            if (stream.read((char*)&repetition_count_field, 1).gcount() != 1) {
+            if (stream.read((char *)&repetition_count_field, 1).gcount() != 1) {
                 error_code = tga::tga_error::TGA_ERROR_FILE_CANNOT_READ;
                 break;
             }
             is_run_length_packet = repetition_count_field & 0x80;
             packet_count = (repetition_count_field & 0x7F) + 1;
             if (is_run_length_packet) {
-                if (stream.read((char*)pixel_buffer.data(), pixel_size)
+                if (stream.read((char *)pixel_buffer.data(), pixel_size)
                         .gcount() != pixel_size) {
                     error_code = tga::tga_error::TGA_ERROR_FILE_CANNOT_READ;
                     break;
@@ -241,7 +239,7 @@ tga::tga_error decode_data_rle(uint8_t* data, const tga::tga_info* info,
         if (is_run_length_packet) {
             memcpy(data, pixel_buffer.data(), data_element_size);
         } else {
-            if (stream.read((char*)data, pixel_size).gcount() != pixel_size) {
+            if (stream.read((char *)data, pixel_size).gcount() != pixel_size) {
                 error_code = tga::tga_error::TGA_ERROR_FILE_CANNOT_READ;
                 break;
             }
@@ -265,8 +263,8 @@ tga::tga_error decode_data_rle(uint8_t* data, const tga::tga_info* info,
     return error_code;
 }
 
-tga::tga_error save_image(const uint8_t* data, const tga::tga_info* info,
-                          std::ofstream& stream) {
+tga::tga_error save_image(const uint8_t *data, const tga::tga_info *info,
+                          std::ofstream &stream) {
     int pixel_size = pixel_format_to_pixel_size(info->pixel_format);
     uint8_t header[HEADER_SIZE];
     memset(header, 0, HEADER_SIZE);
@@ -287,12 +285,12 @@ tga::tga_error save_image(const uint8_t* data, const tga::tga_info* info,
         header[17] = 0x20;
     }
 
-    if (!stream.write((char*)header, HEADER_SIZE)) {
+    if (!stream.write((char *)header, HEADER_SIZE)) {
         return tga::tga_error::TGA_ERROR_FILE_CANNOT_WRITE;
     }
 
     size_t data_size = (size_t)info->width * info->height * pixel_size;
-    if (!stream.write((char*)data, data_size)) {
+    if (!stream.write((char *)data, data_size)) {
         return tga::tga_error::TGA_ERROR_FILE_CANNOT_WRITE;
     }
 
@@ -312,7 +310,6 @@ Image::Image(int width, int height, tga_pixel_format format)
     int pixel_size = pixel_format_to_pixel_size(format);
     if (pixel_size == -1) {
         err = tga_error::TGA_ERROR_UNSUPPORTED_PIXEL_FORMAT;
-        return;
     }
 
     // reallocate data
@@ -334,18 +331,18 @@ bool Image::load(std::string_view filepath) {
 
     // -----------Start load header-----------
     {
-        inFile.read((char*)&header.id_length, 1);
-        inFile.read((char*)&header.map_type, 1);
-        inFile.read((char*)&header.image_type, 1);
-        inFile.read((char*)&header.map_first_entry, 2);
-        inFile.read((char*)&header.map_length, 2);
-        inFile.read((char*)&header.map_entry_size, 1);
-        inFile.read((char*)&header.image_x_origin, 2);
-        inFile.read((char*)&header.image_y_origin, 2);
-        inFile.read((char*)&header.image_width, 2);
-        inFile.read((char*)&header.image_height, 2);
-        inFile.read((char*)&header.pixel_depth, 1);
-        inFile.read((char*)&header.image_descriptor, 1);
+        inFile.read((char *)&header.id_length, 1);
+        inFile.read((char *)&header.map_type, 1);
+        inFile.read((char *)&header.image_type, 1);
+        inFile.read((char *)&header.map_first_entry, 2);
+        inFile.read((char *)&header.map_length, 2);
+        inFile.read((char *)&header.map_entry_size, 1);
+        inFile.read((char *)&header.image_x_origin, 2);
+        inFile.read((char *)&header.image_y_origin, 2);
+        inFile.read((char *)&header.image_width, 2);
+        inFile.read((char *)&header.image_height, 2);
+        inFile.read((char *)&header.pixel_depth, 1);
+        inFile.read((char *)&header.image_descriptor, 1);
 
         if (inFile.rdstate()) {
             err = tga::tga_error::TGA_ERROR_FILE_CANNOT_READ;
@@ -398,7 +395,7 @@ bool Image::load(std::string_view filepath) {
             color_map.bytes_per_entry = BITS_TO_BYTES(header.map_entry_size);
             color_map.pixels.resize(map_size);
 
-            if (inFile.read((char*)color_map.pixels.data(), map_size)
+            if (inFile.read((char *)color_map.pixels.data(), map_size)
                     .gcount() != map_size) {
                 err = tga_error::TGA_ERROR_FILE_CANNOT_READ;
                 return false;
@@ -475,8 +472,8 @@ void Image::flip_h() {
     int flip_num = img_info.width / 2;
     for (int i = 0; i < flip_num; ++i) {
         for (int j = 0; j < img_info.height; ++j) {
-            uint8_t* p1 = get_pixel(i, j);
-            uint8_t* p2 = get_pixel(img_info.width - 1 - i, j);
+            uint8_t *p1 = get_pixel(i, j);
+            uint8_t *p2 = get_pixel(img_info.width - 1 - i, j);
             // Swap two pixels.
             memcpy(temp.data(), p1, pixel_size);
             memcpy(p1, p2, pixel_size);
@@ -494,8 +491,8 @@ void tga::Image::flip_v() {
     int flip_num = img_info.height / 2;
     for (int i = 0; i < flip_num; ++i) {
         for (int j = 0; j < img_info.width; ++j) {
-            uint8_t* p1 = get_pixel(j, i);
-            uint8_t* p2 = get_pixel(j, img_info.height - 1 - i);
+            uint8_t *p1 = get_pixel(j, i);
+            uint8_t *p2 = get_pixel(j, img_info.height - 1 - i);
             // Swap two pixels.
             memcpy(temp.data(), p1, pixel_size);
             memcpy(p1, p2, pixel_size);
@@ -506,7 +503,7 @@ void tga::Image::flip_v() {
 
 tga_error Image::last_error() const { return err; }
 
-uint8_t* Image::get_pixel(int x, int y) {
+uint8_t *Image::get_pixel(int x, int y) {
     if (x < 0) {
         x = 0;
     } else if (x >= img_info.width) {
@@ -521,6 +518,10 @@ uint8_t* Image::get_pixel(int x, int y) {
     return data.data() + (y * img_info.width + x) * pixel_size;
 }
 
+uint8_t *tga::Image::get_raw_data() { return data.data(); }
+
+std::vector<uint8_t> &tga::Image::get_data() { return data; }
+
 uint16_t Image::get_width() const { return img_info.width; }
 
 uint16_t Image::get_height() const { return img_info.height; }
@@ -532,4 +533,8 @@ tga_pixel_format Image::get_pixel_format() const {
 uint8_t Image::get_pixel_size() const {
     return pixel_format_to_pixel_size(img_info.pixel_format);
 }
+
+const uint8_t *tga::Image::get_raw_data() const { return data.data(); }
+
+const std::vector<uint8_t> &tga::Image::get_data() const { return data; }
 }  // namespace tga
