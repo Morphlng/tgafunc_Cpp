@@ -5,6 +5,8 @@
 
 // ----------------------Utilities----------------------
 
+#define TGA_MAX_IMAGE_DIMENSIONS 65535
+
 enum tga_image_type {
     TGA_TYPE_NO_DATA = 0,
     TGA_TYPE_COLOR_MAPPED = 1,
@@ -146,16 +148,16 @@ uint16_t pixel_to_map_index(uint8_t *pixel_ptr) {
 }
 
 // Gets the color of the specified index from the map.
-// Returns false means no error, otherwise returns true.
+// Returns true means no error, otherwise returns false.
 bool try_get_color_from_map(uint8_t *dest, uint16_t index,
                             const color_map *map) {
     index -= map->first_index;
     if (index < 0 && index >= map->entry_count) {
-        return true;
+        return false;
     }
     memcpy(dest, map->pixels.data() + map->bytes_per_entry * index,
            map->bytes_per_entry);
-    return false;
+    return true;
 }
 
 // Decode image data from file stream.
@@ -175,7 +177,7 @@ tga::tga_error decode_data(uint8_t *data, const tga::tga_info *info,
             // In color mapped image, the pixel as the index value of the color
             // map. The actual pixel value is found from the color map.
             uint16_t index = pixel_to_map_index(data);
-            if (try_get_color_from_map(data, index, map)) {
+            if (!try_get_color_from_map(data, index, map)) {
                 error_code = tga::tga_error::TGA_ERROR_COLOR_MAP_INDEX_FAILED;
                 break;
             }
@@ -226,8 +228,8 @@ tga::tga_error decode_data_rle(uint8_t *data, const tga::tga_info *info,
                     // the color map. The actual pixel value is found from the
                     // color map.
                     uint16_t index = pixel_to_map_index(pixel_buffer.data());
-                    if (try_get_color_from_map(pixel_buffer.data(), index,
-                                               map)) {
+                    if (!try_get_color_from_map(pixel_buffer.data(), index,
+                                                map)) {
                         error_code =
                             tga::tga_error::TGA_ERROR_COLOR_MAP_INDEX_FAILED;
                         break;
@@ -248,7 +250,7 @@ tga::tga_error decode_data_rle(uint8_t *data, const tga::tga_info *info,
                 // the color map. The actual pixel value is found from the color
                 // map.
                 uint16_t index = pixel_to_map_index(data);
-                if (try_get_color_from_map(data, index, map)) {
+                if (!try_get_color_from_map(data, index, map)) {
                     error_code =
                         tga::tga_error::TGA_ERROR_COLOR_MAP_INDEX_FAILED;
                     break;
@@ -345,34 +347,35 @@ bool Image::load(std::string_view filepath) {
         inFile.read((char *)&header.image_descriptor, 1);
 
         if (inFile.rdstate()) {
-            err = tga::tga_error::TGA_ERROR_FILE_CANNOT_READ;
+            err = tga_error::TGA_ERROR_FILE_CANNOT_READ;
             return false;
         }
         if (header.map_type > 1) {
-            err = tga::tga_error::TGA_ERROR_UNSUPPORTED_COLOR_MAP_TYPE;
+            err = tga_error::TGA_ERROR_UNSUPPORTED_COLOR_MAP_TYPE;
             return false;
         }
         if (header.image_type == TGA_TYPE_NO_DATA) {
-            err = tga::tga_error::TGA_ERROR_NO_DATA;
+            err = tga_error::TGA_ERROR_NO_DATA;
             return false;
         }
         if (!IS_SUPPORTED_IMAGE_TYPE(header)) {
-            err = tga::tga_error::TGA_ERROR_UNSUPPORTED_IMAGE_TYPE;
+            err = tga_error::TGA_ERROR_UNSUPPORTED_IMAGE_TYPE;
             return false;
         }
         if (header.image_width <= 0 || header.image_height <= 0) {
             // No need to check if the image size exceeds
             // TGA_MAX_IMAGE_DIMENSIONS.
-            err = tga::tga_error::TGA_ERROR_INVALID_IMAGE_DIMENSIONS;
+            err = tga_error::TGA_ERROR_INVALID_IMAGE_DIMENSIONS;
             return false;
         }
         if (!set_pixel_format(img_info.pixel_format, header)) {
-            err = tga::tga_error::TGA_ERROR_UNSUPPORTED_PIXEL_FORMAT;
+            err = tga_error::TGA_ERROR_UNSUPPORTED_PIXEL_FORMAT;
             return false;
         }
     }
     this->img_info.width = header.image_width;
     this->img_info.height = header.image_height;
+    // img_info.pixel_format is already set
 
     // No need to handle the content of the ID field, so skip directly.
     if (!inFile.seekg(header.id_length, std::ios::cur)) {
@@ -482,7 +485,7 @@ void Image::flip_h() {
     }
 }
 
-void tga::Image::flip_v() {
+void Image::flip_v() {
     if (data.empty()) {
         return;
     }
@@ -518,9 +521,9 @@ uint8_t *Image::get_pixel(int x, int y) {
     return data.data() + (y * img_info.width + x) * pixel_size;
 }
 
-uint8_t *tga::Image::get_raw_data() { return data.data(); }
+uint8_t *Image::get_raw_data() { return data.data(); }
 
-std::vector<uint8_t> &tga::Image::get_data() { return data; }
+std::vector<uint8_t> &Image::get_data() { return data; }
 
 uint16_t Image::get_width() const { return img_info.width; }
 
@@ -534,7 +537,7 @@ uint8_t Image::get_pixel_size() const {
     return pixel_format_to_pixel_size(img_info.pixel_format);
 }
 
-const uint8_t *tga::Image::get_raw_data() const { return data.data(); }
+const uint8_t *Image::get_raw_data() const { return data.data(); }
 
-const std::vector<uint8_t> &tga::Image::get_data() const { return data; }
+const std::vector<uint8_t> &Image::get_data() const { return data; }
 }  // namespace tga
